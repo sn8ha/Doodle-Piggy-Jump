@@ -1,0 +1,14 @@
+body {
+    margin: 0;
+    height: 100vh;
+    background-color: black;
+    display: flex;
+    justify-content: center;  /* horizontal centering */
+    align-items: center;      /* vertical centering */
+}
+
+#board {
+    background-image: url("./background.jpg");
+    background-size: cover;       /* Optional: scales background image */
+    background-position: center;  /* Optional: centers background image */
+}
