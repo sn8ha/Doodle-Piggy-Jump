@@ -2,7 +2,7 @@ body {
     margin: 0;
     padding: 0;
     height: 100vh;
-    background-color: black;
+    background-image: url("./pig_background.png");
     display: flex;
     justify-content: center;
     align-items: center;
