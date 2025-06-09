@@ -29,7 +29,6 @@ let startSound = new Audio("start.mp3");
 let jumpSound = new Audio("jump.mp3");
 let gameOverSound = new Audio("gameover.mp3");
 
-// Set volume to 100%
 startSound.volume = 1.0;
 jumpSound.volume = 1.0;
 gameOverSound.volume = 1.0;
@@ -52,11 +51,17 @@ let gameStarted = false;
 
 window.onload = function () {
     board = document.getElementById("board");
-    board.height = boardHeight;
+
+    // Make canvas fit mobile screens
+    if (window.innerWidth < boardWidth) {
+        boardWidth = window.innerWidth;
+        boardHeight = window.innerHeight;
+    }
+
     board.width = boardWidth;
+    board.height = boardHeight;
     context = board.getContext("2d");
 
-    // images
     piggyRightImg = new Image();
     piggyRightImg.src = "piggy_right.png";
     piggy.img = piggyRightImg;
@@ -80,7 +85,10 @@ window.onload = function () {
     placePlatforms();
 
     requestAnimationFrame(update);
+
+    // Input events
     document.addEventListener("keydown", movePiggy);
+    board.addEventListener("touchstart", handleTouch, { passive: false });
 };
 
 function update() {
@@ -89,7 +97,6 @@ function update() {
     if (gameOver) {
         context.clearRect(0, 0, board.width, board.height);
 
-        // Draw game over image
         const imgWidth = 200;
         const imgHeight = 200;
         context.drawImage(
@@ -100,7 +107,6 @@ function update() {
             imgHeight
         );
 
-        // Game Over Text
         context.fillStyle = "black";
         context.font = "28px sans-serif";
         let gameOverText = "Game Over";
@@ -113,7 +119,7 @@ function update() {
         context.fillText(scoreText, (boardWidth - textWidth) / 2, boardHeight / 2 + 210);
 
         context.font = "16px sans-serif";
-        const restartText = "Press SPACE to restart";
+        const restartText = "Tap to restart";
         textWidth = context.measureText(restartText).width;
         context.fillText(restartText, (boardWidth - textWidth) / 2, boardHeight / 2 + 240);
 
@@ -183,6 +189,31 @@ function movePiggy(e) {
         piggy.img = piggyLeftImg;
     } else if ((e.code === "Space" || e.code === "Spacebar") && gameOver) {
         restartGame();
+    }
+}
+
+// Handle touch input (mobile)
+function handleTouch(e) {
+    e.preventDefault();
+
+    let touchX = e.touches[0].clientX;
+
+    if (gameOver) {
+        restartGame();
+        return;
+    }
+
+    if (!gameStarted) {
+        startSound.play().catch(() => {});
+        gameStarted = true;
+    }
+
+    if (touchX < boardWidth / 2) {
+        velocityX = -4;
+        piggy.img = piggyLeftImg;
+    } else {
+        velocityX = 4;
+        piggy.img = piggyRightImg;
     }
 }
 

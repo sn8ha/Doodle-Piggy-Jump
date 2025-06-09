@@ -1,14 +1,22 @@
 body {
     margin: 0;
+    padding: 0;
     height: 100vh;
     background-color: black;
     display: flex;
-    justify-content: center;  /* horizontal centering */
-    align-items: center;      /* vertical centering */
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
 }
 
 #board {
+    width: 100%;
+    max-width: 360px;
+    height: auto;
+    aspect-ratio: 360 / 576;
+
     background-image: url("./background.jpg");
-    background-size: cover;       /* Optional: scales background image */
-    background-position: center;  /* Optional: centers background image */
+    background-size: cover;
+    background-position: center;
+    display: block;
 }
