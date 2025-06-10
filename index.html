@@ -2,12 +2,379 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Doodle Piggy Jump</title>
-    <link rel="stylesheet" href="doodlejump.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background-image: url("New\ Project\ \(12\).png");
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #board {
+            width: 100%;
+            max-width: 360px;
+            height: auto;
+            aspect-ratio: 360 / 576;
+            background-image: url("Presentation1.png");
+            background-size: cover;
+            background-position: center;
+            display: block;
+            touch-action: none;
+        }
+
+        .hi {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 14px;
+            border: #efefef 3px solid;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #fafafa;
+            transition: all 0.3s;
+            margin-right: 0px;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+        }
+
+        .hi:hover {
+            background: linear-gradient(135deg, #ff1a75, #ff4d4d);
+            box-shadow: 0 0 15px #ff1a75;
+        }
+
+        .hi {
+            margin-top: 10px;
+            font-size: 18px;
+        }
+
+        @media (max-width: 480px) {
+            .hi {
+                font-size: 14px;
+                padding: 8px 16px;
+            }
+        }
+    </style>
 </head>
 <body>
+    <a href="index.html" class="hi">⬅ Back to Game Arena</a>
     <canvas id="board"></canvas>
-    <script src="doodlejump.js"></script>
+
+    <script>
+        // board
+        let board;
+        let boardWidth = 360;
+        let boardHeight = 576;
+        let context;
+
+        // doodler
+        let piggyWidth = 80;
+        let piggyHeight = 80;
+        let piggyX = boardWidth / 2 - piggyWidth / 2;
+        let piggyY = boardHeight * 7 / 8 - piggyHeight;
+        let piggyRightImg;
+        let piggyLeftImg;
+        let gameOverImg;
+
+        // platforms
+        let platformArray = [];
+        let platfromWidth = 100;
+        let platformHeight = 30;
+        let platformImg;
+
+        // scoring
+        let score = 0;
+        let maxScore = 0;
+        let gameOver = false;
+
+        // sounds
+        let startSound = new Audio("start.mp3");
+        let jumpSound = new Audio("jump.mp3");
+        let gameOverSound = new Audio("gameover.mp3");
+
+        startSound.volume = 1.0;
+        jumpSound.volume = 1.0;
+        gameOverSound.volume = 1.0;
+
+        let piggy = {
+            img: null,
+            x: piggyX,
+            y: piggyY,
+            width: piggyWidth,
+            height: piggyHeight
+        };
+
+        // movement
+        let velocityX = 0;
+        let velocityY = 0;
+        let initialVelocityY = -6;
+        let gravity = 0.4;
+
+        let gameStarted = false;
+
+        window.onload = function () {
+            board = document.getElementById("board");
+
+            // Make canvas fit mobile screens
+            const rect = board.getBoundingClientRect();
+            boardWidth = rect.width;
+            boardHeight = rect.height;
+
+            board.width = boardWidth;
+            board.height = boardHeight;
+            context = board.getContext("2d");
+
+            // Update piggy position based on actual board size
+            piggyX = boardWidth / 2 - piggyWidth / 2;
+            piggyY = boardHeight * 7 / 8 - piggyHeight;
+            piggy.x = piggyX;
+            piggy.y = piggyY;
+
+            piggyRightImg = new Image();
+            piggyRightImg.src = "piggy_right.png";
+            piggy.img = piggyRightImg;
+            piggyRightImg.onload = function () {
+                context.drawImage(piggy.img, piggy.x, piggy.y, piggy.width, piggy.height);
+                context.imageSmoothingEnabled = true;
+                context.imageSmoothingQuality = "high";
+            };
+
+            piggyLeftImg = new Image();
+            piggyLeftImg.src = "piggy_left.png";
+
+            platformImg = new Image();
+            platformImg.src = "platform.png";
+
+            gameOverImg = new Image();
+            gameOverImg.src = "gameover.png";
+
+            velocityY = initialVelocityY;
+
+            placePlatforms();
+
+            requestAnimationFrame(update);
+
+            // Input events
+            document.addEventListener("keydown", movePiggy);
+            board.addEventListener("touchstart", handleTouch, { passive: false });
+        };
+
+        function update() {
+            context.clearRect(0, 0, board.width, board.height);
+
+            if (gameOver) {
+                context.clearRect(0, 0, board.width, board.height);
+
+                const imgWidth = 200;
+                const imgHeight = 200;
+                context.drawImage(
+                    gameOverImg,
+                    (boardWidth - imgWidth) / 2,
+                    (boardHeight - imgHeight) / 2 - 50,
+                    imgWidth,
+                    imgHeight
+                );
+
+                context.fillStyle = "black";
+                context.font = "28px sans-serif";
+                let gameOverText = "Game Over";
+                let scoreText = "Score: " + score;
+
+                let textWidth = context.measureText(gameOverText).width;
+                context.fillText(gameOverText, (boardWidth - textWidth) / 2, boardHeight / 2 + 170);
+
+                textWidth = context.measureText(scoreText).width;
+                context.fillText(scoreText, (boardWidth - textWidth) / 2, boardHeight / 2 + 210);
+
+                context.font = "16px sans-serif";
+                const restartText = "Tap to restart";
+                textWidth = context.measureText(restartText).width;
+                context.fillText(restartText, (boardWidth - textWidth) / 2, boardHeight / 2 + 240);
+
+                return;
+            }
+
+            requestAnimationFrame(update);
+
+            piggy.x += velocityX;
+
+            if (piggy.x > boardWidth) {
+                piggy.x = 0;
+            } else if (piggy.x + piggy.width < 0) {
+                piggy.x = boardWidth;
+            }
+
+            velocityY += gravity;
+            piggy.y += velocityY;
+
+            if (piggy.y > boardHeight) {
+                if (!gameOver) {
+                    gameOverSound.play().catch(() => {});
+                }
+                gameOver = true;
+            }
+
+            context.drawImage(piggy.img, piggy.x, piggy.y, piggy.width, piggy.height);
+
+            for (let i = 0; i < platformArray.length; i++) {
+                let platform = platformArray[i];
+
+                if (velocityY < 0 && piggy.y < boardHeight * 3 / 4) {
+                    platform.y -= initialVelocityY;
+                }
+
+                if (detectCollision(piggy, platform) && velocityY >= 0) {
+                    velocityY = initialVelocityY;
+                    jumpSound.play().catch(() => {});
+                }
+
+                context.drawImage(platform.img, platform.x, platform.y, platform.width, platform.height);
+            }
+
+            while (platformArray.length > 0 && platformArray[0].y >= boardHeight) {
+                platformArray.shift();
+                newPlatform();
+            }
+
+            updateScore();
+
+            context.fillStyle = "black";
+            context.font = "16px sans-serif";
+            context.fillText("Score: " + score, 5, 20);
+        }
+
+        function movePiggy(e) {
+            if (!gameStarted) {
+                startSound.play().catch(() => {});
+                gameStarted = true;
+            }
+
+            if ((e.code === "ArrowRight" || e.code === "KeyD") && !gameOver) {
+                velocityX = 2;
+                piggy.img = piggyRightImg;
+            } else if ((e.code === "ArrowLeft" || e.code === "KeyA") && !gameOver) {
+                velocityX = -2;
+                piggy.img = piggyLeftImg;
+            } else if ((e.code === "Space" || e.code === "Spacebar") && gameOver) {
+                restartGame();
+            }
+        }
+
+        // Handle touch input (mobile)
+        function handleTouch(e) {
+            e.preventDefault();
+
+            const rect = board.getBoundingClientRect();
+            let touchX = e.touches[0].clientX - rect.left;
+
+            if (gameOver) {
+                restartGame();
+                return;
+            }
+
+            if (!gameStarted) {
+                startSound.play().catch(() => {});
+                gameStarted = true;
+            }
+
+            if (touchX < boardWidth / 2) {
+                velocityX = -4;
+                piggy.img = piggyLeftImg;
+            } else {
+                velocityX = 4;
+                piggy.img = piggyRightImg;
+            }
+        }
+
+        function restartGame() {
+            piggy = {
+                img: piggyRightImg,
+                x: piggyX,
+                y: piggyY,
+                width: piggyWidth,
+                height: piggyHeight
+            };
+
+            velocityX = 0;
+            velocityY = initialVelocityY;
+            score = 0;
+            maxScore = 0;
+            gameOver = false;
+            placePlatforms();
+
+            startSound.play().catch(() => {});
+
+            requestAnimationFrame(update);
+        }
+
+        function placePlatforms() {
+            platformArray = [];
+
+            let base = {
+                img: platformImg,
+                x: boardWidth / 2,
+                y: boardHeight - 50,
+                width: platfromWidth,
+                height: platformHeight
+            };
+
+            platformArray.push(base);
+
+            for (let i = 0; i < 6; i++) {
+                let randomX = Math.floor(Math.random() * (boardWidth - platfromWidth));
+                let platform = {
+                    img: platformImg,
+                    x: randomX,
+                    y: boardHeight - 75 * i - 150,
+                    width: platfromWidth,
+                    height: platformHeight
+                };
+                platformArray.push(platform);
+            }
+        }
+
+        function newPlatform() {
+            let randomX = Math.floor(Math.random() * (boardWidth - platfromWidth));
+            let platform = {
+                img: platformImg,
+                x: randomX,
+                y: -platformHeight,
+                width: platfromWidth,
+                height: platformHeight
+            };
+            platformArray.push(platform);
+        }
+
+        function detectCollision(a, b) {
+            return (
+                a.x < b.x + b.width &&
+                a.x + a.width > b.x &&
+                a.y < b.y + b.height &&
+                a.y + a.height > b.y
+            );
+        }
+
+        function updateScore() {
+            let points = Math.floor(50 * Math.random());
+
+            if (velocityY < 0) {
+                maxScore += points;
+                if (score < maxScore) {
+                    score = maxScore;
+                }
+            } else if (velocityY >= 0) {
+                maxScore -= points;
+            }
+        }
+    </script>
 </body>
 </html>
